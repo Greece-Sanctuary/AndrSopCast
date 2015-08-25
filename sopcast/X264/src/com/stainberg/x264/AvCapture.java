@@ -155,7 +155,7 @@ public class AvCapture extends Activity {
 	            x264Encoder = new X264Encoder();
 	            x264Encoder.setFps(FPS);
 	            x264Encoder.setBitrate(BITRATE);
-	            x264Encoder.setResolution(pixWidth, pixHeight);
+	            x264Encoder.setResolution(pixWidth, pixHeight, 4, 3);
 	            x264Encoder.init();
 	            mCamera = Camera.open(mCameraId);
 	            try {

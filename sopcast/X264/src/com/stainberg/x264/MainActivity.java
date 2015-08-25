@@ -2,13 +2,13 @@ package com.stainberg.x264;
 
 import com.youku.x264.X264Encoder;
 
-import android.app.Activity;
+import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 
 
-public class MainActivity extends Activity {
+public class MainActivity extends ActionBarActivity {
 
 	private X264Encoder test = null;
 	
@@ -23,7 +23,7 @@ public class MainActivity extends Activity {
     	test = new X264Encoder();
     	test.setBitrate(600);
     	test.setFps(45);
-    	test.setResolution(1280, 720);
+    	test.setResolution(1280, 720, 4, 3);
     	test.init();
     }
     

@@ -31,6 +31,7 @@ extern "C"
         void setResolution(unsigned int w, unsigned int h);
         void setBitrate(unsigned int bitrate);
         void setFps(unsigned int fps);
+        void setZerolatencyType(unsigned int type);
 
         void getResolution(int& w, int& h);
         unsigned int getFps();
@@ -45,6 +46,7 @@ extern "C"
         unsigned int i_fps;
         unsigned int width;
         unsigned int height;
+        unsigned int zerolatencyType;
 
         unsigned int current_f_rf_constant;
         unsigned int userSetting_f_rf_constant;

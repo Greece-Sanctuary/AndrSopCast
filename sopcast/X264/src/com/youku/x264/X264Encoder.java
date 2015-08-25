@@ -13,7 +13,7 @@ public class X264Encoder {
 	private native void native_setup(Object week_thiz);
 	private native void native_finalize();
 	private native void native_setBitrate(int bitrate);
-	private native void native_setResolution(int w, int h);
+	private native void native_setResolution(int w, int h, int wd, int hd);
 	private native void native_setFps(int fps);
 	private native void native_compress(byte[] in, int size, int rotate, int w, int h);
 	private native void native_audioInit();
@@ -47,8 +47,8 @@ public class X264Encoder {
 		native_setBitrate(bitrate);		
 	}
 
- 	public void setResolution(int w, int h) {
- 		native_setResolution(w, h);
+ 	public void setResolution(int w, int h, int wd, int hd) {
+ 		native_setResolution(w, h, wd, hd);
  	}
 	
  	public void setFps(int fps) {

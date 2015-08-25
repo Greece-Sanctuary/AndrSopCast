@@ -173,14 +173,24 @@ com_youku_x264_X264Encoder_setBitrate(JNIEnv* env, jobject thiz, jint bitrate)
 }
 
 static void
-com_youku_x264_X264Encoder_setResolution(JNIEnv* env, jobject thiz, jint w, jint h)
+com_youku_x264_X264Encoder_setZerolatencyType(JNIEnv* env, jobject thiz, jint zerotype)
+{
+	if(x264Encoder != NULL)
+	{
+		x264Encoder->setZerolatencyType(zerotype);
+	}
+}
+
+
+static void
+com_youku_x264_X264Encoder_setResolution(JNIEnv* env, jobject thiz, jint w, jint h, jint wd, jint hd)
 {
 	if(x264Encoder != NULL)
 	{
 		yuvW = w;//352
 		yuvH = h;//288
 		width = h;//288
-		height = width/4*3;
+		height = width/wd*hd;
 //		height = w;//352
 		x264Encoder->setResolution(width, height);
 		LOGI("setResolution, w=%d,h=%d", width, height);
@@ -715,7 +725,8 @@ static JNINativeMethod mMethods[] = {//method for JAVA. use this to register nat
 		{"native_setup", "(Ljava/lang/Object;)V", (void*) com_youku_x264_X264Encoder_setup},
 		{"native_finalize", "()V", (void*) com_youku_x264_X264Encoder_finalize},
 		{"native_setBitrate", "(I)V", (void*)com_youku_x264_X264Encoder_setBitrate},
-		{"native_setResolution", "(II)V", (void*)com_youku_x264_X264Encoder_setResolution},
+		{"native_setZerolatencyType", "(I)V", (void*)com_youku_x264_X264Encoder_setZerolatencyType},
+		{"native_setResolution", "(IIII)V", (void*)com_youku_x264_X264Encoder_setResolution},
 		{"native_setFps", "(I)V", (void*)com_youku_x264_X264Encoder_setFps},
 		{"native_compress", "([BIIII)V", (void*)com_youku_x264_X264Encoder_CompressBuffer},
 		{"native_audioInit", "()V", (void*) com_youku_x264_X264Encoder_AudioInit},

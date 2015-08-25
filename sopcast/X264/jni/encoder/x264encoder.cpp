@@ -13,9 +13,10 @@
 X264Encoder::X264Encoder()
 {
     i_fps = 15;
-    i_bitrate = 300;
+    i_bitrate = 500;
     width = 352;
     height = 288;
+    zerolatencyType = 0;
 
     frameNo = 0;
     isForceIDRFrameEnabled = false;
@@ -66,6 +67,10 @@ unsigned int X264Encoder::getFps()
 	return i_fps;
 }
 
+void X264Encoder::setZerolatencyType(unsigned int type){
+	zerolatencyType = type;
+}
+
 void X264Encoder::getResolution(int& w, int & h)
 {
 	memcpy(&w, &width, sizeof(int));
@@ -84,7 +89,12 @@ bool X264Encoder::openX264Encoder()
         }
         memset(pParameter, 0, sizeof(x264_param_t));
     }
-    int ret = x264_param_default_preset(pParameter, "ultrafast", "zerolatency");
+    char* strZerolatencyType = "ultrafast";
+    if (zerolatencyType == 0)
+    	strZerolatencyType = "ultrafast";
+    else if (zerolatencyType == 1)
+    	strZerolatencyType = "medium";
+    int ret = x264_param_default_preset(pParameter, strZerolatencyType, "zerolatency");
     if (ret != 0) {
         this->closeX264Encoder();
         return false;
@@ -142,9 +152,9 @@ bool X264Encoder::openX264Encoder()
     pParameter->rc.i_qp_step = 3;
     pParameter->rc.i_qp_constant = 10;
     pParameter->rc.f_rf_constant = 10;		  // 1pass VBR, nominal QP
-    pParameter->rc.i_bitrate = 300;
-    pParameter->rc.i_vbv_max_bitrate = 300;
-    pParameter->rc.i_vbv_buffer_size = 300;
+    pParameter->rc.i_bitrate = i_bitrate;
+    pParameter->rc.i_vbv_max_bitrate = i_bitrate;
+    pParameter->rc.i_vbv_buffer_size = i_bitrate;
     pParameter->rc.f_vbv_buffer_init = 0.6f;
     pParameter->rc.f_rate_tolerance = 10 / 100.0f; // In CRF mode,maximum CRF as caused by VBV
 
