@@ -1,3 +1,4 @@
+/*
 package com.stainberg.x264;
 
 import com.youku.x264.X264Encoder;
@@ -51,3 +52,4 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 }
+*/
