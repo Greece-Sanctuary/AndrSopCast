@@ -1,5 +1,7 @@
 package com.stainberg.x264;
 
+import java.io.IOException;
+
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
@@ -8,31 +10,19 @@ import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.media.AudioFormat;
-import android.media.AudioManager;
 import android.media.AudioRecord;
-import android.media.AudioTrack;
-import android.media.MediaCodec;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
-import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
-import android.widget.RelativeLayout;
 
 import com.youku.x264.X264Encoder;
-
-import java.io.BufferedOutputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 
 /**
  * Created by stainberg on 4/7/15.
@@ -40,14 +30,17 @@ import java.io.IOException;
 public class AvCapture extends Activity {
 
 	 private X264Encoder x264Encoder = null;
+	    private static final int WWW = 720;
+	    private static final int HHH = 1280;
 	    private SurfaceHolder mSurfaceHolder = null;
 	    private Camera mCamera = null;
 	    private int mCameraId = 0;
 	    private static final String TAG = AvCapture.class.getSimpleName();
 	    private boolean bIfPreview = false;
-	    private static final int pixWidth = 352;
-	    private static final int pixHeight = 288;
-	    private static final int BITRATE = 300;
+	    private static final int pixWidth = WWW;
+	    private static final int pixHeight = HHH;
+
+	    private static final int BITRATE = 500;
 	    private static final int FPS = 15;
 	    private static final int frequency = 44100;
 	    private static final int channelConfiguration = AudioFormat.CHANNEL_OUT_STEREO;
@@ -92,6 +85,11 @@ public class AvCapture extends Activity {
 	    
 	    public void onCreate(Bundle savedInstanceState) {
 	        super.onCreate(savedInstanceState);
+	        
+	        this.requestWindowFeature(Window.FEATURE_NO_TITLE);//去掉标题栏
+
+	        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);//去掉信息栏
+	        
 	        setContentView(R.layout.activity_av_capture);
 	        audioIntrp = false;
 	        startAudio = false;
@@ -111,11 +109,6 @@ public class AvCapture extends Activity {
 
 	    private void initSurfaceView() {
 	        SurfaceView mSurfaceView = (SurfaceView)findViewById(R.id.tablet_camera_view);
-	        int w = getScreenWidth(this);
-	        int h = w/(pixWidth/pixHeight);
-	        RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(w, h);
-	        lp.addRule(RelativeLayout.CENTER_IN_PARENT);
-	        mSurfaceView.setLayoutParams(lp);
 	        mSurfaceHolder = mSurfaceView.getHolder();
 	        mSurfaceHolder.addCallback(mSurfaceHolderCallback);
 	        mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -155,7 +148,7 @@ public class AvCapture extends Activity {
 	            x264Encoder = new X264Encoder();
 	            x264Encoder.setFps(FPS);
 	            x264Encoder.setBitrate(BITRATE);
-	            x264Encoder.setResolution(pixWidth, pixHeight, 4, 3);
+	            x264Encoder.setResolution(1280/2, 720/2, 9, 16);
 	            x264Encoder.init();
 	            mCamera = Camera.open(mCameraId);
 	            try {
@@ -201,12 +194,12 @@ public class AvCapture extends Activity {
 	            try {
 	                Camera.Parameters parameters = mCamera.getParameters();
 	                parameters.setFlashMode("off");
-	                parameters.setFocusMode(Parameters.FOCUS_MODE_AUTO);
+	                parameters.setFocusMode(Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
 	                parameters.setPictureFormat(ImageFormat.JPEG);
 	                parameters.setPreviewFormat(ImageFormat.NV21);
 	                parameters.setPreviewFrameRate(FPS);
-	                parameters.setPictureSize(640, 480);
-	                parameters.setPreviewSize(640, 480);
+	                parameters.setPictureSize(1280, 720);
+	                parameters.setPreviewSize(1280, 720);
 	                if (this.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
 	                    parameters.set("orientation", "portrait");
 	                    parameters.set("rotation", 90);
@@ -238,7 +231,7 @@ public class AvCapture extends Activity {
 	        		return;
 	        	}
 	        	if(data.length > 0) {
-	        		x264Encoder.compress(data, data.length, 90, 640, 480);
+	        		x264Encoder.compress(data, data.length, 90, 1280, 720);
 	        	}
 	            
 	        }

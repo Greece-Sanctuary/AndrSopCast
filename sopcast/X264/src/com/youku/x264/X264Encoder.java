@@ -1,10 +1,16 @@
 package com.youku.x264;
 
+import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 
+import android.os.Environment;
 import android.os.Message;
 import android.util.Log;
 
@@ -28,11 +34,39 @@ public class X264Encoder {
 	private native void native_stop();
 	private native void native_prepare();
 	
+	private File testFile;
+	private FileOutputStream outStr;
+	private static BufferedOutputStream buff;
+
+	
 	public X264Encoder() {
+		
+		String sdcardPath = Environment.getExternalStorageDirectory().toString();
+		testFile = new File(sdcardPath+"/testxq.flv");
+		
+		if(testFile.exists()){
+			testFile.delete();
+		}
+		
+		try {
+			testFile.createNewFile();
+			outStr = new FileOutputStream(testFile);
+			buff = new BufferedOutputStream(outStr); 
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
 		native_setup(new WeakReference<X264Encoder>(this));
 	}
 	
 	public void stop() {
+		try {
+			buff.close();
+			outStr.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		native_stop();
 	}
 	
@@ -98,6 +132,7 @@ public class X264Encoder {
 			if(tag != null) {
 //				if(tag[0] == 0)
 					native_writeFLV(arg0, arg1, tag, 0);
+
 //				else if(tag[0] == 1 || tag[0] == 2)
 //					native_writeFLV(arg0, arg1, tag, 0);
 			}
@@ -110,7 +145,7 @@ public class X264Encoder {
 			Log.i("audio", "msg = " + msg + ", arg1 = " + arg1);
 		}
 		else if(msg == 11) {
-//			Log.w("video", "msg = " + msg + ", arg1 = " + arg1);
+			Log.w("video", "msg = " + msg + ", arg1 = " + arg1);
 		}
 	}
 	
@@ -128,6 +163,17 @@ public class X264Encoder {
 	
 	private static void postPacketEventFromNative(Object weak_thiz, int msg, byte[] arg0) {
 		if(arg0 != null) {
+			
+			if (buff != null){
+				try {
+					buff.write(arg0);
+					buff.flush(); 
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
 //			Log.v("123", "packet result len = " + arg0.length);
 		}
 	}
