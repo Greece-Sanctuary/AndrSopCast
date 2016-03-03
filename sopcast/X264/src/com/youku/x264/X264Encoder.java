@@ -37,35 +37,40 @@ public class X264Encoder {
 	private File testFile;
 	private FileOutputStream outStr;
 	private static BufferedOutputStream buff;
-
+	private static boolean ISTEST = false;
 	
 	public X264Encoder() {
 		
-		String sdcardPath = Environment.getExternalStorageDirectory().toString();
-		testFile = new File(sdcardPath+"/testxq.flv");
-		
-		if(testFile.exists()){
-			testFile.delete();
-		}
-		
-		try {
-			testFile.createNewFile();
-			outStr = new FileOutputStream(testFile);
-			buff = new BufferedOutputStream(outStr); 
-		} catch (Exception e) {
-			e.printStackTrace();
+		if (ISTEST){
+			String sdcardPath = Environment.getExternalStorageDirectory().toString();
+			testFile = new File(sdcardPath+"/testxq.flv");
+			
+			if(testFile.exists()){
+				testFile.delete();
+			}
+			
+			try {
+				testFile.createNewFile();
+				outStr = new FileOutputStream(testFile);
+				buff = new BufferedOutputStream(outStr); 
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		
 		native_setup(new WeakReference<X264Encoder>(this));
 	}
 	
 	public void stop() {
-		try {
-			buff.close();
-			outStr.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		
+		if (ISTEST){
+			try {
+				buff.close();
+				outStr.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		native_stop();
 	}
@@ -164,13 +169,15 @@ public class X264Encoder {
 	private static void postPacketEventFromNative(Object weak_thiz, int msg, byte[] arg0) {
 		if(arg0 != null) {
 			
-			if (buff != null){
-				try {
-					buff.write(arg0);
-					buff.flush(); 
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+			if (ISTEST){
+				if (buff != null){
+					try {
+						buff.write(arg0);
+						buff.flush(); 
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 

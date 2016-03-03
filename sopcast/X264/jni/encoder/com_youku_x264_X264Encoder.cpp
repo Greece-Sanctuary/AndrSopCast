@@ -50,6 +50,7 @@ static uint8_t* srcv;
 static uint8_t* dsty;
 static uint8_t* dstu;
 static uint8_t* dstv;
+static uint8_t* rgbbuffer;
 static pthread_mutex_t mutex;
 static int audioInit = 0;
 using namespace libyuv;
@@ -191,6 +192,7 @@ com_youku_x264_X264Encoder_setResolution(JNIEnv* env, jobject thiz, jint w, jint
 		yuvH = h;//288
 		width = h;//288
 		height = width/wd*hd;
+		rgbbuffer = (uint8_t*)malloc(sizeof(uint8_t)*w*h*4);
 //		height = w;//352
 		x264Encoder->setResolution(width, height);
 		LOGI("setResolution, w=%d,h=%d", width, height);
@@ -230,10 +232,15 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 			*(srcu+i)=*(data+nPicSize+i*2);
 			*(srcv+i)=*(data+nPicSize+i*2+1);
 		}
-		destH = yuvH;
-		destW = w*yuvH/h;
+		destW = yuvW ;
+		destH = h*yuvW/w;
+
+		int offsetline = (destH-yuvH)/4;
+
 		if(rotate == 90)
 		{
+
+//			LOGI("CompressBuffer, w=%d, h=%d, destW=%d, destH=%d, yuvW=%d, yuvH=%d, height=%d", w, h, destW, destH,yuvW,yuvH,height);
 			I420Scale(srcy, w,
 				srcu, w>>1,
 				srcv, w>>1,
@@ -245,11 +252,24 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 				kFilterBox);
 			for(int i=0; i<yuvH/2; i++)
 			{
-				memcpy(srcy+(height*i*2), dsty+(destW*i*2), height);
-				memcpy(srcy+(height*(i*2+1)), dsty+(destW*(i*2+1)), height);
-				memcpy(srcu+(height/2*i), dstu+(destW/2*i), height/2);
-				memcpy(srcv+(height/2*i), dstv+(destW/2*i), height/2);
+				memcpy(srcy+(height*i*2), dsty+(destW*(i+offsetline)*2), height);
+				memcpy(srcy+(height*(i*2+1)), dsty+(destW*((i+offsetline)*2+1)), height);
+				memcpy(srcu+(height/2*i), dstu+(destW/2*(i+offsetline)), height/2);
+				memcpy(srcv+(height/2*i), dstv+(destW/2*(i+offsetline)), height/2);
 			}
+/*
+			//test yuv->rgb
+			I420ToARGB(srcy, yuvW,
+					srcu, yuvW>>1,
+					srcv, yuvW>>1,
+					rgbbuffer, yuvW*4, yuvW, yuvH);
+			//meibai
+
+			//test rgb->yuv
+			ARGBToI420(rgbbuffer,yuvW*4,srcy, yuvW,
+					srcu, yuvW>>1,
+					srcv, yuvW>>1,yuvW, yuvH);
+*/
 			I420Rotate(srcy, height,
 				srcu, height>>1,
 				srcv, height>>1,
@@ -270,10 +290,10 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 				kFilterBox);
 			for(int i=0; i<yuvH/2; i++)
 			{
-				memcpy(srcy+(height*i*2), dsty+(destW*i*2)+(destW-height), height);
-				memcpy(srcy+(height*(i*2+1)), dsty+(destW*(i*2+1))+(destW-height), height);
-				memcpy(srcu+(height/2*i), dstu+(destW/2*i)+(destW-height)/2, height/2);
-				memcpy(srcv+(height/2*i), dstv+(destW/2*i)+(destW-height)/2, height/2);
+				memcpy(srcy+(height*i*2), dsty+(destW*(i+offsetline)*2)+(destW-height), height);
+				memcpy(srcy+(height*(i*2+1)), dsty+(destW*((i+offsetline)*2+1))+(destW-height), height);
+				memcpy(srcu+(height/2*i), dstu+(destW/2*(i+offsetline))+(destW-height)/2, height/2);
+				memcpy(srcv+(height/2*i), dstv+(destW/2*(i+offsetline))+(destW-height)/2, height/2);
 			}
 			I420Mirror(srcy, height,
 				srcu, height>>1,

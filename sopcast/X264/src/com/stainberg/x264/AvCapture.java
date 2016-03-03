@@ -198,8 +198,8 @@ public class AvCapture extends Activity {
 	                parameters.setPictureFormat(ImageFormat.JPEG);
 	                parameters.setPreviewFormat(ImageFormat.NV21);
 	                parameters.setPreviewFrameRate(FPS);
-	                parameters.setPictureSize(1280, 720);
-	                parameters.setPreviewSize(1280, 720);
+	                parameters.setPictureSize(HHH, WWW);
+	                parameters.setPreviewSize(HHH, WWW);
 	                if (this.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
 	                    parameters.set("orientation", "portrait");
 	                    parameters.set("rotation", 90);
@@ -231,7 +231,7 @@ public class AvCapture extends Activity {
 	        		return;
 	        	}
 	        	if(data.length > 0) {
-	        		x264Encoder.compress(data, data.length, 90, 1280, 720);
+	        		x264Encoder.compress(data, data.length, 90, HHH, WWW);
 	        	}
 	            
 	        }
