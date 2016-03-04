@@ -21,15 +21,19 @@
 #include <sys/socket.h>
 #include "mutex.h"
 #include "com_youku_x264_X264Encoder.h"
+#include "watermark.h"
 #ifdef TAG
 #undef TAG
 #endif
 #define TAG "com_youku_x264_X264Encoder.cpp"
 
+#include "beautify/bilateral_filter.h"
+
 static const char* mClassPathName = "com/youku/x264/X264Encoder";
 static Listener* listener = NULL;
 static X264Encoder* x264Encoder = NULL;
 static aacEncoder* AACEncoder = NULL;
+//static BilateralFilter* bilfilter = NULL;
 static FlvPacket* flvPacketHandler = NULL;
 static x264_picture_t* inputPicture = NULL;
 static int width = 0, height = 0;
@@ -54,6 +58,7 @@ static uint8_t* rgbbuffer;
 static pthread_mutex_t mutex;
 static int audioInit = 0;
 using namespace libyuv;
+
 
 static int AudioCompress(uint8_t* data, int size, uint8_t* outData);
 
@@ -97,6 +102,8 @@ com_youku_x264_X264Encoder_init(JNIEnv* env, jobject thiz) {
 	flvPacketHandler->setSPSData(x264Encoder->sps, x264Encoder->spslen);
 	flvPacketHandler->setVideoResolution(width, height);
 	listener->notify(pthread_self(), 10, NULL, 0, NULL);
+
+
 }
 
 static void
@@ -105,8 +112,10 @@ com_youku_x264_X264Encoder_setup(JNIEnv* env, jobject thiz, jobject weak_thiz) {
 	AACEncoder = new aacEncoder();
 	flvPacketHandler = new FlvPacket();
 	inputPicture = new x264_picture_t();
+//	bilfilter = new BilateralFilter();
 	listener = new Listener(jVM, thiz, weak_thiz);
 	pthread_mutex_init(&mutex, NULL);
+
 }
 
 static void
@@ -161,6 +170,10 @@ com_youku_x264_X264Encoder_finalize(JNIEnv* env, jobject thiz)
 		free(remindAudioBuffer);
 		remindAudioBuffer = NULL;
 	}
+//	if (bilfilter != NULL){
+//		delete bilfilter;
+//		bilfilter = NULL;
+//	}
 	pthread_mutex_destroy(&mutex);
 }
 
@@ -182,6 +195,12 @@ com_youku_x264_X264Encoder_setZerolatencyType(JNIEnv* env, jobject thiz, jint ze
 	}
 }
 
+static void
+com_youku_x264_X264Encoder_setWaterMarkLogo(JNIEnv* env, jobject thiz, jint zerotype)
+{
+
+}
+
 
 static void
 com_youku_x264_X264Encoder_setResolution(JNIEnv* env, jobject thiz, jint w, jint h, jint wd, jint hd)
@@ -196,6 +215,8 @@ com_youku_x264_X264Encoder_setResolution(JNIEnv* env, jobject thiz, jint w, jint
 //		height = w;//352
 		x264Encoder->setResolution(width, height);
 		LOGI("setResolution, w=%d,h=%d", width, height);
+
+//		bilfilter->InitBilateralFilter(0.09, 10.0/255, 360, 640);
 	}
 }
 
@@ -257,25 +278,47 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 				memcpy(srcu+(height/2*i), dstu+(destW/2*(i+offsetline)), height/2);
 				memcpy(srcv+(height/2*i), dstv+(destW/2*(i+offsetline)), height/2);
 			}
-/*
-			//test yuv->rgb
-			I420ToARGB(srcy, yuvW,
-					srcu, yuvW>>1,
-					srcv, yuvW>>1,
-					rgbbuffer, yuvW*4, yuvW, yuvH);
-			//meibai
 
-			//test rgb->yuv
-			ARGBToI420(rgbbuffer,yuvW*4,srcy, yuvW,
-					srcu, yuvW>>1,
-					srcv, yuvW>>1,yuvW, yuvH);
-*/
 			I420Rotate(srcy, height,
 				srcu, height>>1,
 				srcv, height>>1,
 				inputPicture->img.plane[0], inputPicture->img.i_stride[0],
 				inputPicture->img.plane[2], inputPicture->img.i_stride[2],
 				inputPicture->img.plane[1], inputPicture->img.i_stride[1], height, width, kRotate90);
+
+			//test yuv->rgb
+			I420ToRGB24(inputPicture->img.plane[0], inputPicture->img.i_stride[0],
+					inputPicture->img.plane[2], inputPicture->img.i_stride[2],
+					inputPicture->img.plane[1], inputPicture->img.i_stride[1],
+					rgbbuffer, yuvH*4, yuvH, yuvW);
+
+			//add logo watermark
+//			unsigned char* logobuf = new unsigned char[40*40*4];
+//			memset(logobuf, 100, 40*40*4);
+//			LOGI("CompressBuffer, yuvW=%d, yuvH=%d",yuvW,yuvH);
+
+//			int ret = GenerateLogo(rgbbuffer,yuvH, yuvW, logobuf, 40, 40, 10, 10);
+
+//			for (int i=0; i<360; i++){
+//				for (int j=0; j<640; j++)
+//				{
+//					rgbbuffer[(i*640 + j)*4+1] = 255-rgbbuffer[(i*640 + j)*4+1];
+//					rgbbuffer[(i*640 + j)*4+2] = 255-rgbbuffer[(i*640 + j)*4+2];
+//					rgbbuffer[(i*640 + j)*4+0] = 255-rgbbuffer[(i*640 + j)*4+0];
+//				}
+//			}
+
+			//美白cpu代码
+//			bilfilter->SetProcessImage(rgbbuffer, 0.09, 0.2*15/255);
+//			bilfilter->Process();
+//			bilfilter->GetProcessImage(rgbbuffer);
+
+			//test rgb->yuv
+			RGB24ToI420(rgbbuffer,yuvH*4,
+					inputPicture->img.plane[0], inputPicture->img.i_stride[0],
+					inputPicture->img.plane[2], inputPicture->img.i_stride[2],
+					inputPicture->img.plane[1], inputPicture->img.i_stride[1],
+					yuvH, yuvW);
 		}
 		else if(rotate == 270)
 		{

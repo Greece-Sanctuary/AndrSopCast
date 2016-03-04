@@ -37,7 +37,7 @@ public class X264Encoder {
 	private File testFile;
 	private FileOutputStream outStr;
 	private static BufferedOutputStream buff;
-	private static boolean ISTEST = false;
+	private static boolean ISTEST = true;
 	
 	public X264Encoder() {
 		

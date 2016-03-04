@@ -3,11 +3,13 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../x264 \
+					$(LOCAL_PATH)/beautify \
 					$(LOCAL_PATH)/../flv \
     				$(LOCAL_PATH)
     
 LOCAL_MODULE    := x264Encoder
-LOCAL_SRC_FILES :=  x264encoder.cpp \
+LOCAL_SRC_FILES :=  beautify/bilateral_filter.cpp \
+					x264encoder.cpp \
 					aacencoder.cpp \
 					com_youku_x264_X264Encoder.cpp \
 					../flv/flv.c \
