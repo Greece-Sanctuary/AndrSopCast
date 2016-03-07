@@ -10,13 +10,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 
+import com.stainberg.x264.ImageTools;
+
 import android.os.Environment;
 import android.os.Message;
 import android.util.Log;
 
 public class X264Encoder {
 	private native void native_init();
-	private native void native_setup(Object week_thiz);
+	private native void native_setup(Object week_thiz, boolean avc);
 	private native void native_finalize();
 	private native void native_setBitrate(int bitrate);
 	private native void native_setZerolatencyType(int type);
@@ -37,7 +39,7 @@ public class X264Encoder {
 	private static BufferedOutputStream buff;
 	private static boolean ISTEST = true;
 	
-	public X264Encoder() {
+	public X264Encoder(boolean avc) {
 		
 		if (ISTEST){
 			String sdcardPath = Environment.getExternalStorageDirectory().toString();
@@ -56,7 +58,7 @@ public class X264Encoder {
 			}
 		}
 		
-		native_setup(new WeakReference<X264Encoder>(this));
+		native_setup(new WeakReference<X264Encoder>(this), avc);
 	}
 	
 	public void stop() {
@@ -141,28 +143,25 @@ public class X264Encoder {
 			}
 //			Log.v("123", "result len = " + result.length);
 		}
-		else
-			Log.v("123", "msg = " + msg + ", arg1 = " + arg1);
-		
-		if(msg == 21) {
-			Log.i("audio", "msg = " + msg + ", arg1 = " + arg1);
-		}
-		else if(msg == 11) {
-			Log.w("video", "msg = " + msg + ", arg1 = " + arg1);
+//		else
+//			Log.v("123", "msg = " + msg + ", arg1 = " + arg1);
+//		
+//		if(msg == 21) {
+//			Log.i("audio", "msg = " + msg + ", arg1 = " + arg1);
+//		}
+//		else if(msg == 11) {
+//			Log.w("video", "msg = " + msg + ", arg1 = " + arg1);
+//		}
+	}
+	
+	private static void postAVCFromNative(Object weak_thiz,  byte[] arg0, int arg1, int width, int height) {
+		Log.i("postAVCFromNative", "arg1:" + arg1);
+		if(arg0 != null) {
+			//送到上层硬编
+//			ImageTools.saveYUVtoJPEGFile("sdcard/", "yuvttt", arg0, width, height);
 		}
 	}
 	
-	private static void postVideoPacketEventFromNative(Object weak_thiz, int msg, byte[] arg0) {
-		if(arg0 != null) {
-//			Log.v("123", "video result len = " + arg0.length);
-		}
-	}
-	
-	private static void postAudioPacketEventFromNative(Object weak_thiz, int msg, byte[] arg0) {
-		if(arg0 != null) {
-//			Log.v("123", "audio result len = " + arg0.length);
-		}
-	}
 	
 	private static void postPacketEventFromNative(Object weak_thiz, int msg, byte[] arg0) {
 		if(arg0 != null) {

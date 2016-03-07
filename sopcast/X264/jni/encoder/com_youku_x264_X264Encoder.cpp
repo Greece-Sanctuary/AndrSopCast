@@ -57,6 +57,7 @@ static uint8_t* dstv;
 static uint8_t* rgbbuffer;
 static pthread_mutex_t mutex;
 static int audioInit = 0;
+static bool sAVC = false;
 using namespace libyuv;
 
 
@@ -107,7 +108,9 @@ com_youku_x264_X264Encoder_init(JNIEnv* env, jobject thiz) {
 }
 
 static void
-com_youku_x264_X264Encoder_setup(JNIEnv* env, jobject thiz, jobject weak_thiz) {
+com_youku_x264_X264Encoder_setup(JNIEnv* env, jobject thiz, jobject weak_thiz, bool AVC) {
+	LOGI("com_youku_x264_X264Encoder_setup,AVC=%d", AVC);
+	sAVC = AVC;
 	x264Encoder = new X264Encoder();
 	AACEncoder = new aacEncoder();
 	flvPacketHandler = new FlvPacket();
@@ -122,7 +125,7 @@ static void
 com_youku_x264_X264Encoder_finalize(JNIEnv* env, jobject thiz)
 {
 	run = 0;
-	if(x264Encoder != NULL)
+	if(!sAVC && x264Encoder != NULL)
 	{
 		x264Encoder->closeX264Encoder();
 		delete x264Encoder;
@@ -180,7 +183,7 @@ com_youku_x264_X264Encoder_finalize(JNIEnv* env, jobject thiz)
 static void
 com_youku_x264_X264Encoder_setBitrate(JNIEnv* env, jobject thiz, jint bitrate)
 {
-	if(x264Encoder != NULL)
+	if(!sAVC && x264Encoder != NULL)
 	{
 		x264Encoder->setBitrate(bitrate);
 	}
@@ -189,7 +192,7 @@ com_youku_x264_X264Encoder_setBitrate(JNIEnv* env, jobject thiz, jint bitrate)
 static void
 com_youku_x264_X264Encoder_setZerolatencyType(JNIEnv* env, jobject thiz, jint zerotype)
 {
-	if(x264Encoder != NULL)
+	if(!sAVC && x264Encoder != NULL)
 	{
 		x264Encoder->setZerolatencyType(zerotype);
 	}
@@ -205,25 +208,24 @@ com_youku_x264_X264Encoder_setWaterMarkLogo(JNIEnv* env, jobject thiz, jint zero
 static void
 com_youku_x264_X264Encoder_setResolution(JNIEnv* env, jobject thiz, jint w, jint h, jint wd, jint hd)
 {
-	if(x264Encoder != NULL)
-	{
-		yuvW = w;//352
-		yuvH = h;//288
-		width = h;//288
-		height = width/wd*hd;
-		rgbbuffer = (uint8_t*)malloc(sizeof(uint8_t)*w*h*4);
-//		height = w;//352
-		x264Encoder->setResolution(width, height);
-		LOGI("setResolution, w=%d,h=%d", width, height);
+	yuvW = w;
+	yuvH = h;
+	width = h;
+	height = width/wd*hd;
+	rgbbuffer = (uint8_t*)malloc(sizeof(uint8_t)*w*h*4);
 
-//		bilfilter->InitBilateralFilter(0.09, 10.0/255, 360, 640);
+//	LOGI("setResolution, w=%d,h=%d", width, height);
+	if(!sAVC && x264Encoder != NULL)
+	{
+		x264Encoder->setResolution(width, height);
 	}
+
 }
 
 static void
 com_youku_x264_X264Encoder_setFps(JNIEnv* env, jobject thiz, jint fps)
 {
-	if(x264Encoder != NULL)
+	if(!sAVC && x264Encoder != NULL)
 	{
 		LOGI("setFps, fps=%d", fps);
 		x264Encoder->setFps(fps);
@@ -235,161 +237,152 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 {
 	if(!run)
 		return;
-	if(x264Encoder != NULL)
-	{
-//		double time = (double)clock()/1000000.0;
-		uint8_t tag[5];
-		uint32_t timestemp = getTimestamp(0);
-		uint8_t srcData[1024*50];
-		int len = 0;
-		x264_nal_t *p_nals = NULL;
-		int nalsCount = 0;
-		uint8_t* data = (uint8_t*)env->GetByteArrayElements(in, 0);
-		int nPicSize = w * h;
-		int destW = 0, destH = 0;
-		memcpy(srcy, data, nPicSize);
-		for (int i=0;i<nPicSize/4;i++)
-		{
-			*(srcu+i)=*(data+nPicSize+i*2);
-			*(srcv+i)=*(data+nPicSize+i*2+1);
-		}
-		destW = yuvW ;
-		destH = h*yuvW/w;
 
-		int offsetline = (destH-yuvH)/4;
+	uint8_t tag[5];
+	uint32_t timestemp = getTimestamp(0);
+	uint8_t srcData[1024 * 50];
+	int len = 0;
+	x264_nal_t *p_nals = NULL;
+	int nalsCount = 0;
+	uint8_t* data = (uint8_t*) env->GetByteArrayElements(in, 0);
+	int nPicSize = w * h;
+	int destW = 0, destH = 0;
+	memcpy(srcy, data, nPicSize);
+	for (int i = 0; i < nPicSize / 4; i++) {
+		*(srcu + i) = *(data + nPicSize + i * 2);
+		*(srcv + i) = *(data + nPicSize + i * 2 + 1);
+	}
+	destW = yuvW;
+	destH = h * yuvW / w;
 
-		if(rotate == 90)
-		{
+	int offsetline = (destH - yuvH) / 4;
 
+	if (rotate == 90) {
 //			LOGI("CompressBuffer, w=%d, h=%d, destW=%d, destH=%d, yuvW=%d, yuvH=%d, height=%d", w, h, destW, destH,yuvW,yuvH,height);
-			I420Scale(srcy, w,
-				srcu, w>>1,
-				srcv, w>>1,
-				w, h,
-				dsty, destW,
-				dstu, destW>>1,
-				dstv, destW>>1,
-				destW, destH,
-				kFilterBox);
-			for(int i=0; i<yuvH/2; i++)
-			{
-				memcpy(srcy+(height*i*2), dsty+(destW*(i+offsetline)*2), height);
-				memcpy(srcy+(height*(i*2+1)), dsty+(destW*((i+offsetline)*2+1)), height);
-				memcpy(srcu+(height/2*i), dstu+(destW/2*(i+offsetline)), height/2);
-				memcpy(srcv+(height/2*i), dstv+(destW/2*(i+offsetline)), height/2);
-			}
-
-			I420Rotate(srcy, height,
-				srcu, height>>1,
-				srcv, height>>1,
-				inputPicture->img.plane[0], inputPicture->img.i_stride[0],
-				inputPicture->img.plane[2], inputPicture->img.i_stride[2],
-				inputPicture->img.plane[1], inputPicture->img.i_stride[1], height, width, kRotate90);
-/*
-			//test yuv->rgb
-			I420ToRGB24(inputPicture->img.plane[0], inputPicture->img.i_stride[0],
-					inputPicture->img.plane[2], inputPicture->img.i_stride[2],
-					inputPicture->img.plane[1], inputPicture->img.i_stride[1],
-					rgbbuffer, yuvH*4, yuvH, yuvW);
-
-			//add logo watermark
-
-//			unsigned char* logobuf = new unsigned char[40*40*4];
-//			memset(logobuf, 100, 40*40*4);
-//			LOGI("CompressBuffer, yuvW=%d, yuvH=%d",yuvW,yuvH);
-
-//			int ret = GenerateLogo(rgbbuffer,yuvH, yuvW, logobuf, 40, 40, 10, 10);
-
-//			for (int i=0; i<360; i++){
-//				for (int j=0; j<640; j++)
-//				{
-//					rgbbuffer[(i*640 + j)*4+1] = 255-rgbbuffer[(i*640 + j)*4+1];
-//					rgbbuffer[(i*640 + j)*4+2] = 255-rgbbuffer[(i*640 + j)*4+2];
-//					rgbbuffer[(i*640 + j)*4+0] = 255-rgbbuffer[(i*640 + j)*4+0];
-//				}
-//			}
-
-			//美白cpu代码
-//			bilfilter->SetProcessImage(rgbbuffer, 0.09, 0.2*15/255);
-//			bilfilter->Process();
-//			bilfilter->GetProcessImage(rgbbuffer);
-
-			//test rgb->yuv
-			RGB24ToI420(rgbbuffer,yuvH*4,
-					inputPicture->img.plane[0], inputPicture->img.i_stride[0],
-					inputPicture->img.plane[2], inputPicture->img.i_stride[2],
-					inputPicture->img.plane[1], inputPicture->img.i_stride[1],
-					yuvH, yuvW);
-*/
-		}
-		else if(rotate == 270)
-		{
-			I420Scale(srcy, w,
-				srcu, w>>1,
-				srcv, w>>1,
-				w, h,
-				dsty, destW,
-				dstu, destW>>1,
-				dstv, destW>>1,
-				destW, destH,
-				kFilterBox);
-			for(int i=0; i<yuvH/2; i++)
-			{
-				memcpy(srcy+(height*i*2), dsty+(destW*(i+offsetline)*2)+(destW-height), height);
-				memcpy(srcy+(height*(i*2+1)), dsty+(destW*((i+offsetline)*2+1))+(destW-height), height);
-				memcpy(srcu+(height/2*i), dstu+(destW/2*(i+offsetline))+(destW-height)/2, height/2);
-				memcpy(srcv+(height/2*i), dstv+(destW/2*(i+offsetline))+(destW-height)/2, height/2);
-			}
-			I420Mirror(srcy, height,
-				srcu, height>>1,
-				srcv, height>>1,
-				dsty, height,
-				dstu, height>>1,
-				dstv, height>>1,
-				height, width);
-			I420Rotate(dsty, height,
-				dstu, height>>1,
-				dstv, height>>1,
-				inputPicture->img.plane[0], inputPicture->img.i_stride[0],
-				inputPicture->img.plane[2], inputPicture->img.i_stride[2],
-				inputPicture->img.plane[1], inputPicture->img.i_stride[1], height, width, kRotate90);
+		I420Scale(srcy, w, srcu, w >> 1, srcv, w >> 1, w, h, dsty, destW, dstu,
+				destW >> 1, dstv, destW >> 1, destW, destH, kFilterBox);
+		for (int i = 0; i < yuvH / 2; i++) {
+			memcpy(srcy + (height * i * 2),
+					dsty + (destW * (i + offsetline) * 2), height);
+			memcpy(srcy + (height * (i * 2 + 1)),
+					dsty + (destW * ((i + offsetline) * 2 + 1)), height);
+			memcpy(srcu + (height / 2 * i),
+					dstu + (destW / 2 * (i + offsetline)), height / 2);
+			memcpy(srcv + (height / 2 * i),
+					dstv + (destW / 2 * (i + offsetline)), height / 2);
 		}
 
+		I420Rotate(srcy, height, srcu, height >> 1, srcv, height >> 1,
+				inputPicture->img.plane[0], inputPicture->img.i_stride[0],
+				inputPicture->img.plane[2], inputPicture->img.i_stride[2],
+				inputPicture->img.plane[1], inputPicture->img.i_stride[1],
+				height, width, kRotate90);
+		/*
+		 //test yuv->rgb
+		 I420ToRGB24(inputPicture->img.plane[0], inputPicture->img.i_stride[0],
+		 inputPicture->img.plane[2], inputPicture->img.i_stride[2],
+		 inputPicture->img.plane[1], inputPicture->img.i_stride[1],
+		 rgbbuffer, yuvH*4, yuvH, yuvW);
+
+		 //add logo watermark
+
+		 //			unsigned char* logobuf = new unsigned char[40*40*4];
+		 //			memset(logobuf, 100, 40*40*4);
+		 //			LOGI("CompressBuffer, yuvW=%d, yuvH=%d",yuvW,yuvH);
+
+		 //			int ret = GenerateLogo(rgbbuffer,yuvH, yuvW, logobuf, 40, 40, 10, 10);
+
+		 //			for (int i=0; i<360; i++){
+		 //				for (int j=0; j<640; j++)
+		 //				{
+		 //					rgbbuffer[(i*640 + j)*4+1] = 255-rgbbuffer[(i*640 + j)*4+1];
+		 //					rgbbuffer[(i*640 + j)*4+2] = 255-rgbbuffer[(i*640 + j)*4+2];
+		 //					rgbbuffer[(i*640 + j)*4+0] = 255-rgbbuffer[(i*640 + j)*4+0];
+		 //				}
+		 //			}
+
+		 //美白cpu代码
+		 //			bilfilter->SetProcessImage(rgbbuffer, 0.09, 0.2*15/255);
+		 //			bilfilter->Process();
+		 //			bilfilter->GetProcessImage(rgbbuffer);
+
+		 //test rgb->yuv
+		 RGB24ToI420(rgbbuffer,yuvH*4,
+		 inputPicture->img.plane[0], inputPicture->img.i_stride[0],
+		 inputPicture->img.plane[2], inputPicture->img.i_stride[2],
+		 inputPicture->img.plane[1], inputPicture->img.i_stride[1],
+		 yuvH, yuvW);
+		 */
+	} else if (rotate == 270) {
+		I420Scale(srcy, w, srcu, w >> 1, srcv, w >> 1, w, h, dsty, destW, dstu,
+				destW >> 1, dstv, destW >> 1, destW, destH, kFilterBox);
+		for (int i = 0; i < yuvH / 2; i++) {
+			memcpy(srcy + (height * i * 2),
+					dsty + (destW * (i + offsetline) * 2) + (destW - height),
+					height);
+			memcpy(srcy + (height * (i * 2 + 1)),
+					dsty + (destW * ((i + offsetline) * 2 + 1))
+							+ (destW - height), height);
+			memcpy(srcu + (height / 2 * i),
+					dstu + (destW / 2 * (i + offsetline))
+							+ (destW - height) / 2, height / 2);
+			memcpy(srcv + (height / 2 * i),
+					dstv + (destW / 2 * (i + offsetline))
+							+ (destW - height) / 2, height / 2);
+		}
+		I420Mirror(srcy, height, srcu, height >> 1, srcv, height >> 1, dsty,
+				height, dstu, height >> 1, dstv, height >> 1, height, width);
+		I420Rotate(dsty, height, dstu, height >> 1, dstv, height >> 1,
+				inputPicture->img.plane[0], inputPicture->img.i_stride[0],
+				inputPicture->img.plane[2], inputPicture->img.i_stride[2],
+				inputPicture->img.plane[1], inputPicture->img.i_stride[1],
+				height, width, kRotate90);
+	}
+
+	if (!sAVC) {
+		//软编
 		x264Encoder->x264EncoderProcess(inputPicture, &p_nals, nalsCount);
-		if(p_nals)
-		{
-			for(int i=0; i<nalsCount; i++)
-			{
-				if (p_nals[i].i_type == NAL_SLICE_IDR)
-				{
+		if (p_nals) {
+			for (int i = 0; i < nalsCount; i++) {
+				if (p_nals[i].i_type == NAL_SLICE_IDR) {
 					tag[0] = 0x01;
-					len = x264Encoder->createNalBuffer(srcData, p_nals[i].p_payload, p_nals[i].i_payload);
-//					packetSize += flvPacketHandler->writeH264Packet(1, srcData, len, timestemp, outData);//++videoTimestemp*1000/x264Encoder->getFps()
-				}
-				else if(p_nals[i].i_type == NAL_SLICE)
-				{
+					len = x264Encoder->createNalBuffer(srcData,
+							p_nals[i].p_payload, p_nals[i].i_payload);
+
+				} else if (p_nals[i].i_type == NAL_SLICE) {
 					tag[0] = 0x02;
-					len = x264Encoder->createNalBuffer(srcData, p_nals[i].p_payload, p_nals[i].i_payload);
-				}
-				else
-				{
+					len = x264Encoder->createNalBuffer(srcData,
+							p_nals[i].p_payload, p_nals[i].i_payload);
+				} else {
 					len = 0;
 				}
-				if(len > 0)
-				{
+				if (len > 0) {
 					memcpy(tag + 1, &timestemp, sizeof(uint32_t));
 					jbyteArray jarrayTag = env->NewByteArray(5);
-					env->SetByteArrayRegion(jarrayTag, 0, 5, (jbyte*)tag);
+					env->SetByteArrayRegion(jarrayTag, 0, 5, (jbyte*) tag);
 					jbyteArray jarray = env->NewByteArray(len);
-					env->SetByteArrayRegion(jarray, 0, len, (jbyte*)srcData);
-					listener->notify(pthread_self(), 11, jarray, len, jarrayTag);
+					env->SetByteArrayRegion(jarray, 0, len, (jbyte*) srcData);
+					listener->notify(pthread_self(), 11, jarray, len,
+							jarrayTag);
 				}
 			}
 		}
-		env->ReleaseByteArrayElements(in, (jbyte*)data, JNI_ABORT);
-//		double duration = (double)clock()/1000000.0 - time;
-//		LOGI("diff time = %f", duration);
 	}
+	else{
+		//得到最终的yuv数据
+		int len = height*width*3/2;
+		uint8_t yuvData[len];
+		memcpy(yuvData, inputPicture->img.plane[0], width*height);
+		for (int i = 0; i < width*height / 4; i++) {
+			*(yuvData + width*height + i * 2) = *(inputPicture->img.plane[2] + i);
+			*(yuvData + width*height + i * 2 + 1)= *(inputPicture->img.plane[1] + i);
+		}
+		jbyteArray jarray = env->NewByteArray(len);
+		env->SetByteArrayRegion(jarray, 0, len, (jbyte*) yuvData);
+		//抛到java层进行硬编
+		listener->notifyAVC(pthread_self(), jarray, len, width, height);
+	}
+	env->ReleaseByteArrayElements(in, (jbyte*) data, JNI_ABORT);
 }
 
 static void
@@ -628,7 +621,7 @@ com_youku_x264_X264Encoder_prepare(JNIEnv* env, jobject thiz)
 
 static JNINativeMethod mMethods[] = {//method for JAVA. use this to register native method
 		{"native_init", "()V", (void*) com_youku_x264_X264Encoder_init},
-		{"native_setup", "(Ljava/lang/Object;)V", (void*) com_youku_x264_X264Encoder_setup},
+		{"native_setup", "(Ljava/lang/Object;Z)V", (void*) com_youku_x264_X264Encoder_setup},
 		{"native_finalize", "()V", (void*) com_youku_x264_X264Encoder_finalize},
 		{"native_setBitrate", "(I)V", (void*)com_youku_x264_X264Encoder_setBitrate},
 		{"native_setZerolatencyType", "(I)V", (void*)com_youku_x264_X264Encoder_setZerolatencyType},

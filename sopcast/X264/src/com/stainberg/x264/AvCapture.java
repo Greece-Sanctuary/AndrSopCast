@@ -145,7 +145,7 @@ public class AvCapture extends Activity {
 	        @TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	        @Override
 	        public void surfaceCreated(SurfaceHolder holder) {
-	            x264Encoder = new X264Encoder();
+	            x264Encoder = new X264Encoder(true);
 	            x264Encoder.setFps(FPS);
 	            x264Encoder.setBitrate(BITRATE);
 	            x264Encoder.setResolution(1280/2, 720/2, 9, 16);
