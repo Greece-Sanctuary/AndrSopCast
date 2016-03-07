@@ -285,7 +285,7 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 				inputPicture->img.plane[0], inputPicture->img.i_stride[0],
 				inputPicture->img.plane[2], inputPicture->img.i_stride[2],
 				inputPicture->img.plane[1], inputPicture->img.i_stride[1], height, width, kRotate90);
-
+/*
 			//test yuv->rgb
 			I420ToRGB24(inputPicture->img.plane[0], inputPicture->img.i_stride[0],
 					inputPicture->img.plane[2], inputPicture->img.i_stride[2],
@@ -293,6 +293,7 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 					rgbbuffer, yuvH*4, yuvH, yuvW);
 
 			//add logo watermark
+
 //			unsigned char* logobuf = new unsigned char[40*40*4];
 //			memset(logobuf, 100, 40*40*4);
 //			LOGI("CompressBuffer, yuvW=%d, yuvH=%d",yuvW,yuvH);
@@ -319,6 +320,7 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 					inputPicture->img.plane[2], inputPicture->img.i_stride[2],
 					inputPicture->img.plane[1], inputPicture->img.i_stride[1],
 					yuvH, yuvW);
+*/
 		}
 		else if(rotate == 270)
 		{
@@ -461,53 +463,6 @@ com_youku_x264_X264Encoder_AudioCompress(JNIEnv* env, jobject thiz, jbyteArray i
 	}
 }
 
-//static void
-//com_youku_x264_X264Encoder_AudioCompress(JNIEnv* env, jobject thiz, jbyteArray in, jint insize)
-//{
-//	if(!run)
-//		return;
-//	if(AACEncoder != NULL)
-//	{
-//		uint32_t timestemp = getTimestamp(1);
-//		uint8_t tag[5];
-//		uint8_t aacData[1024*50];
-//		uint8_t* paacData = aacData;
-//		uint8_t* pAudioBuffer = audioBuffer;
-//		int aacLen = 0;
-//		uint8_t* data = (uint8_t*)env->GetByteArrayElements(in, 0);
-//		if(remindAudioLen > 0)
-//		{
-//			memcpy(pAudioBuffer, remindAudioBuffer, remindAudioLen);
-//		}
-//		memcpy(pAudioBuffer + remindAudioLen, data, insize);
-//		insize += remindAudioLen;
-//		env->ReleaseByteArrayElements(in, (jbyte*)data, JNI_ABORT);
-//		while(samples <= insize)
-//		{
-//			int len = AACEncoder->aacEncoderProcess(pAudioBuffer, samples, paacData);
-//			pAudioBuffer += samples;
-//			insize = insize - samples;
-//			paacData += len;
-//			aacLen += len;
-//		}
-//		remindAudioLen = insize;
-//		if(aacLen > 0)
-//		{
-//			tag[0] = 0x00;
-//			memcpy(tag + 1, &timestemp, sizeof(uint32_t));
-//			jbyteArray jarrayTag = env->NewByteArray(5);
-//			env->SetByteArrayRegion(jarrayTag, 0, 5, (jbyte*)tag);
-//			jbyteArray jarray = env->NewByteArray(aacLen);
-//			env->SetByteArrayRegion(jarray, 0, aacLen, (jbyte*)aacData);
-//			listener->notify(pthread_self(), 21, jarray, aacLen, jarrayTag);
-//		}
-//		if(remindAudioLen > 0)
-//		{
-//			memcpy(remindAudioBuffer, pAudioBuffer, remindAudioLen);
-//		}
-//	}
-//}
-
 static void
 com_youku_x264_X264Encoder_writeFLV(JNIEnv* env, jobject thiz, jbyteArray in, jint insize, jbyteArray tag, int withHeader)
 {
@@ -579,118 +534,6 @@ com_youku_x264_X264Encoder_writeFLV(JNIEnv* env, jobject thiz, jbyteArray in, ji
 	env->SetByteArrayRegion(jarray, head_size, packetSize, (jbyte*)packetData);
 	pthread_mutex_unlock(&mutex);
 	listener->notifyPacket(pthread_self(), 30, jarray);
-}
-
-static void
-com_youku_x264_X264Encoder_writeVideoFLV(JNIEnv* env, jobject thiz, jbyteArray in, jint insize, jbyteArray tag, int withHeader)
-{
-	size_t head_size = sizeof(proto_header) + sizeof(u2r_streaming);
-	uint8_t type;
-	uint32_t timestemp;
-	int packetSize = 0;
-	uint8_t packetData[1024*50];
-	uint8_t header[head_size];
-	uint8_t* _in = (uint8_t*)env->GetByteArrayElements(in, 0);
-	uint8_t* _tag = (uint8_t*)env->GetByteArrayElements(tag, 0);
-	memcpy(&type, _tag, sizeof(uint8_t));
-	memcpy(&timestemp, _tag + 1, sizeof(uint32_t));
-	if(insize > 0)
-	{
-		if(type == 1)
-			packetSize = flvPacketHandler->writeH264Packet(1, _in, insize, timestemp, packetData);
-		else if(type == 2)
-			packetSize = flvPacketHandler->writeH264Packet(0, _in, insize, timestemp, packetData);
-		//head
-		size_t packet_size = 0;
-		if(withHeader)
-		{
-			packet_size =  head_size + packetSize;
-			proto_header hdr;
-			memset(&hdr, 0, sizeof(hdr));
-			hdr.magic     =  255;
-			hdr.cmd		  =  htons(CMD_U2R_STREAMING);
-			hdr.size      =  htonl(packet_size);
-			hdr.version	  =  1;
-
-			u2r_streaming req;
-			memset(&req, 0, sizeof(req));
-			req.streamid		= htonl(_streamId);
-			req.payload_type	= PAYLOAD_TYPE_FLV;
-			req.payload_size	= htonl(packetSize);
-			memcpy(header, &hdr, sizeof(hdr));
-			memcpy(header+sizeof(hdr), &req, sizeof(req));
-		}
-		else
-		{
-			packet_size = packetSize;
-			head_size = 0;
-		}
-
-		env->ReleaseByteArrayElements(in, (jbyte*)_in, JNI_ABORT);
-		env->ReleaseByteArrayElements(tag, (jbyte*)_tag, JNI_ABORT);
-		jbyteArray jarray = env->NewByteArray(packet_size);
-		if(head_size > 0)
-		{
-			env->SetByteArrayRegion(jarray, 0, head_size, (jbyte*)header);
-		}
-		env->SetByteArrayRegion(jarray, head_size, packetSize, (jbyte*)packetData);
-		listener->notifyVideoPacket(pthread_self(), 12, jarray);
-	}
-}
-
-static void
-com_youku_x264_X264Encoder_writeAudioFLV(JNIEnv* env, jobject thiz, jbyteArray in, jint insize, jbyteArray tag, int withHeader)
-{
-	size_t head_size = sizeof(proto_header) + sizeof(u2r_streaming);
-	uint8_t type;
-	uint32_t timestemp;
-	int packetSize = 0;
-	uint8_t packetData[1024*50];
-	uint8_t header[head_size];
-	uint8_t* _in = (uint8_t*)env->GetByteArrayElements(in, 0);
-	uint8_t* _tag = (uint8_t*)env->GetByteArrayElements(tag, 0);
-	memcpy(&type, _tag, sizeof(uint8_t));
-	memcpy(&timestemp, _tag + 1, sizeof(uint32_t));
-	if(insize > 0)
-	{
-		if(type == 0)
-			packetSize = flvPacketHandler->writeAACPacket(_in, insize, timestemp, packetData);//++audioTimestemp*(1000000/44100)
-		//head
-		size_t packet_size = 0;
-		if(withHeader)
-		{
-			packet_size =  head_size + packetSize;
-			proto_header hdr;
-			memset(&hdr, 0, sizeof(hdr));
-			hdr.magic     =  255;
-			hdr.cmd		  =  htons(CMD_U2R_STREAMING);
-			hdr.size      =  htonl(packet_size);
-			hdr.version	  =  1;
-
-			u2r_streaming req;
-			memset(&req, 0, sizeof(req));
-			req.streamid		= htonl(_streamId);
-			req.payload_type	= PAYLOAD_TYPE_FLV;
-			req.payload_size	= htonl(packetSize);
-			memcpy(header, &hdr, sizeof(hdr));
-			memcpy(header+sizeof(hdr), &req, sizeof(req));
-		}
-		else
-		{
-			packet_size = packetSize;
-			head_size = 0;
-		}
-
-		env->ReleaseByteArrayElements(in, (jbyte*)_in, JNI_ABORT);
-		env->ReleaseByteArrayElements(tag, (jbyte*)_tag, JNI_ABORT);
-		jbyteArray jarray = env->NewByteArray(packet_size);
-		if(head_size > 0)
-		{
-			env->SetByteArrayRegion(jarray, 0, head_size, (jbyte*)header);
-		}
-		env->SetByteArrayRegion(jarray, head_size, packetSize, (jbyte*)packetData);
-		listener->notifyAudioPacket(pthread_self(), 22, jarray);
-	}
 }
 
 static jbyteArray
@@ -795,8 +638,6 @@ static JNINativeMethod mMethods[] = {//method for JAVA. use this to register nat
 		{"native_audioInit", "()V", (void*) com_youku_x264_X264Encoder_AudioInit},
 		{"native_audioSet", "(III)V", (void*)com_youku_x264_X264Encoder_AudioSet},//Channels, PCMBitSize, SampleRate
 		{"native_audioCompress", "([BI)V", (void*)com_youku_x264_X264Encoder_AudioCompress},
-		{"native_writeVideoFLV", "([BI[BI)V", (void*)com_youku_x264_X264Encoder_writeVideoFLV},
-		{"native_writeAudioFLV", "([BI[BI)V", (void*)com_youku_x264_X264Encoder_writeAudioFLV},
 		{"native_writeFLV", "([BI[BI)V", (void*)com_youku_x264_X264Encoder_writeFLV},
 		{"native_handshake", "(IILjava/lang/String;)[B", (void*)com_youku_x264_X264Encoder_handShake},
 		{"native_checkKey", "([BII)I", (void*)com_youku_x264_X264Encoder_checkKey},

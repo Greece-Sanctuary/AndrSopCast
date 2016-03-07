@@ -26,8 +26,6 @@ public class X264Encoder {
 	private native void native_audioInit();
 	private native void native_audioSet(int channels, int pCMBitSize, int sampleRate);
 	private native void native_audioCompress(byte[] in, int size);
-	private static native void native_writeVideoFLV(byte[] in, int size, byte[] tag, int withHeader);
-	private static native void native_writeAudioFLV(byte[] in, int size, byte[] tag, int withHeader);
 	private static native void native_writeFLV(byte[] in, int size, byte[] tag, int withHeader);
 	private native byte[] native_handshake(int streamId, int userID, String token);
 	private native int native_checkKey(byte[] in, int size, int streamId);
@@ -124,11 +122,11 @@ public class X264Encoder {
 	}
 	
 	public void writeVideoFLV(byte[] in, int size, byte[] tag, int withHeader) {
-		native_writeVideoFLV(in, size, tag, withHeader);
+		native_writeFLV(in, size, tag, withHeader);
 	}
 	
 	public void writeAudioFLV(byte[] in, int size, byte[] tag, int withHeader) {
-		native_writeAudioFLV(in, size, tag, withHeader);
+		native_writeFLV(in, size, tag, withHeader);
 	}
 	
 	private static void postEventFromNative(Object weak_thiz, int msg, byte[] arg0, int arg1, byte[] tag) {
