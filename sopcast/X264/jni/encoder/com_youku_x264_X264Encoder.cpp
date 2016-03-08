@@ -22,6 +22,7 @@
 #include "mutex.h"
 #include "com_youku_x264_X264Encoder.h"
 #include "watermark.h"
+#include "lftools/change.h"
 #ifdef TAG
 #undef TAG
 #endif
@@ -360,10 +361,11 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 					memcpy(tag + 1, &timestemp, sizeof(uint32_t));
 					jbyteArray jarrayTag = env->NewByteArray(5);
 					env->SetByteArrayRegion(jarrayTag, 0, 5, (jbyte*) tag);
+
 					jbyteArray jarray = env->NewByteArray(len);
 					env->SetByteArrayRegion(jarray, 0, len, (jbyte*) srcData);
-					listener->notify(pthread_self(), 11, jarray, len,
-							jarrayTag);
+
+					listener->notify(pthread_self(), 11, jarray, len, jarrayTag);
 				}
 			}
 		}
@@ -372,15 +374,21 @@ com_youku_x264_X264Encoder_CompressBuffer(JNIEnv* env, jobject thiz, jbyteArray 
 		//得到最终的yuv数据
 		int len = height*width*3/2;
 		uint8_t yuvData[len];
+		uint8_t nv12Data[len];
 		memcpy(yuvData, inputPicture->img.plane[0], width*height);
 		for (int i = 0; i < width*height / 4; i++) {
 			*(yuvData + width*height + i * 2) = *(inputPicture->img.plane[2] + i);
 			*(yuvData + width*height + i * 2 + 1)= *(inputPicture->img.plane[1] + i);
 		}
+		NV21ToNV12(yuvData, nv12Data, width, height);
+		memcpy(tag + 1, &timestemp, sizeof(uint32_t));
+		jbyteArray jarrayTag = env->NewByteArray(5);
+		env->SetByteArrayRegion(jarrayTag, 0, 5, (jbyte*) tag);
+
 		jbyteArray jarray = env->NewByteArray(len);
-		env->SetByteArrayRegion(jarray, 0, len, (jbyte*) yuvData);
+		env->SetByteArrayRegion(jarray, 0, len, (jbyte*) nv12Data);
 		//抛到java层进行硬编
-		listener->notifyAVC(pthread_self(), jarray, len, width, height);
+		listener->notifyAVC(pthread_self(), jarray, len, width, height, jarrayTag);
 	}
 	env->ReleaseByteArrayElements(in, (jbyte*) data, JNI_ABORT);
 }

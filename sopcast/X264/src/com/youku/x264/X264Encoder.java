@@ -39,6 +39,17 @@ public class X264Encoder {
 	private static BufferedOutputStream buff;
 	private static boolean ISTEST = true;
 	
+	public static LFLiveCallback mCallback;
+	public void setCallback(LFLiveCallback cb)
+	{
+		mCallback = cb;
+	}
+	
+	public static interface LFLiveCallback{
+		public void CallBackAVCFromNative(byte[] arg0, int arg1, int width, int height, byte[] tag);
+	}
+
+	
 	public X264Encoder(boolean avc) {
 		
 		if (ISTEST){
@@ -124,10 +135,12 @@ public class X264Encoder {
 	}
 	
 	public void writeVideoFLV(byte[] in, int size, byte[] tag, int withHeader) {
-		native_writeFLV(in, size, tag, withHeader);
+
+		native_writeFLV(in, size, tag, 0);
 	}
 	
 	public void writeAudioFLV(byte[] in, int size, byte[] tag, int withHeader) {
+
 		native_writeFLV(in, size, tag, withHeader);
 	}
 	
@@ -154,14 +167,26 @@ public class X264Encoder {
 //		}
 	}
 	
-	private static void postAVCFromNative(Object weak_thiz,  byte[] arg0, int arg1, int width, int height) {
-		Log.i("postAVCFromNative", "arg1:" + arg1);
+	private static void postAVCFromNative(Object weak_thiz,  byte[] arg0, int arg1, int width, int height,  byte[] tag) {
+//		Log.i("postAVCFromNative", "arg1:" + arg1);
 		if(arg0 != null) {
 			//送到上层硬编
+//			int a = bytesToInt(tag, 1);
+//			Log.i("postAVCFromNative1", "tag:"+a);
+			
+			mCallback.CallBackAVCFromNative(arg0, arg1, width, height, tag);
 //			ImageTools.saveYUVtoJPEGFile("sdcard/", "yuvttt", arg0, width, height);
 		}
 	}
 	
+	public static int bytesToInt(byte[] src, int offset) {  
+	    int value;    
+	    value = (int) ((src[offset] & 0xFF)   
+	            | ((src[offset+1] & 0xFF)<<8)   
+	            | ((src[offset+2] & 0xFF)<<16)   
+	            | ((src[offset+3] & 0xFF)<<24));  
+	    return value;  
+	}  
 	
 	private static void postPacketEventFromNative(Object weak_thiz, int msg, byte[] arg0) {
 		if(arg0 != null) {

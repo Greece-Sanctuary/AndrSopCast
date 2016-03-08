@@ -34,7 +34,7 @@ Listener::Listener(JavaVM* vm, jobject thiz, jobject weak_cls) {
 	mClass =(jclass) env->NewGlobalRef(clazz);
 	mObject = env->NewGlobalRef(weak_cls);
 	mMethod = env->GetStaticMethodID(mClass, mListenerName, "(Ljava/lang/Object;I[BI[B)V");
-	mMethodAVC = env->GetStaticMethodID(mClass, mListenerAVCName, "(Ljava/lang/Object;[BIII)V");
+	mMethodAVC = env->GetStaticMethodID(mClass, mListenerAVCName, "(Ljava/lang/Object;[BIII[B)V");
 	mMethodPacket = env->GetStaticMethodID(mClass, mListenerPacketName, "(Ljava/lang/Object;I[B)V");
 }
 
@@ -57,10 +57,10 @@ void Listener::notify(pthread_t threadId, int msg, jbyteArray arg1, int len, jby
 	env->CallStaticVoidMethod(mClass, mMethod, mObject, msg, arg1, len, tag);
 }
 
-void Listener::notifyAVC(pthread_t threadId, jbyteArray arg1, int len,int width, int height) {
+void Listener::notifyAVC(pthread_t threadId, jbyteArray arg1, int len,int width, int height, jbyteArray tag) {
 	JNIEnv* env = NULL;
 	mpjVM->AttachCurrentThread((JNIEnv**)&env, NULL);
-	env->CallStaticVoidMethod(mClass, mMethodAVC, mObject, arg1, len, width, height);
+	env->CallStaticVoidMethod(mClass, mMethodAVC, mObject, arg1, len, width, height, tag);
 }
 
 void Listener::notifyPacket(pthread_t threadId, int msg, jbyteArray arg1) {

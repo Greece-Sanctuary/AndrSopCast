@@ -1,7 +1,9 @@
 package com.stainberg.x264;
 
 import java.io.IOException;
+import java.util.concurrent.ArrayBlockingQueue;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
@@ -11,6 +13,8 @@ import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
@@ -51,7 +55,19 @@ public class AvCapture extends Activity {
 	    private AudioRecord audioRecord;
 	    private static int recBufSize;
 	    private byte[] recBuf;
+	    public static ArrayBlockingQueue<avcDataInfo> YUVQueue = new ArrayBlockingQueue<avcDataInfo>(100); 
+		
+		private AvcEncoder avcCodec;
 	    
+		public static class avcDataInfo{
+			public byte[] mData;
+			public byte[] mTag;
+			public avcDataInfo(byte[] data, byte[] tag){
+				mData = data;
+				mTag = tag;
+			}
+		}
+		
 	    private Thread audioThread = new Thread() {
 	        public void run() {
 	            while(!audioIntrp) {
@@ -96,6 +112,7 @@ public class AvCapture extends Activity {
 	        videoIntrp = true;
 	        setCameraId();
 	        audioThread.start();
+
 	    }
 
 	    public static  int getScreenWidth(Context context) {
@@ -112,6 +129,7 @@ public class AvCapture extends Activity {
 	        mSurfaceHolder = mSurfaceView.getHolder();
 	        mSurfaceHolder.addCallback(mSurfaceHolderCallback);
 	        mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+	        
 	    }
 
 	    public void onStart() {
@@ -126,6 +144,16 @@ public class AvCapture extends Activity {
             }
 	    }
 
+	    private X264Encoder.LFLiveCallback m_callback = new X264Encoder.LFLiveCallback() {
+		
+
+			@Override
+			public void CallBackAVCFromNative(byte[] arg0, int arg1, int width,
+					int height, byte[] tag) {
+				putYUVData(arg0,arg1,tag);
+			}
+		};
+	    
 	    private Callback mSurfaceHolderCallback = new Callback() {
 	        @Override
 	        public void surfaceDestroyed(SurfaceHolder holder) {
@@ -136,6 +164,7 @@ public class AvCapture extends Activity {
 	                mCamera.release();
 	                mCamera = null;
 	            }
+	        	avcCodec.StopThread();
 	        	videoIntrp = true;
 	        	audioIntrp = true;
 	            startAudio = false;
@@ -145,11 +174,17 @@ public class AvCapture extends Activity {
 	        @TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	        @Override
 	        public void surfaceCreated(SurfaceHolder holder) {
-	            x264Encoder = new X264Encoder(true);
+	            x264Encoder = new X264Encoder(SupportAvcCodec());
 	            x264Encoder.setFps(FPS);
 	            x264Encoder.setBitrate(BITRATE);
 	            x264Encoder.setResolution(1280/2, 720/2, 9, 16);
 	            x264Encoder.init();
+	            x264Encoder.setCallback(m_callback);
+		        
+		        avcCodec = new AvcEncoder(720/2,1280/2,15,300*1000);
+		        avcCodec.setx264Encoder(x264Encoder);
+				avcCodec.StartEncoderThread();
+	            
 	            mCamera = Camera.open(mCameraId);
 	            try {
 	                mCamera.setPreviewDisplay(mSurfaceHolder);
@@ -236,4 +271,28 @@ public class AvCapture extends Activity {
 	            
 	        }
 	    };
+	    
+	    @SuppressLint("NewApi")
+		private boolean SupportAvcCodec(){
+			if(Build.VERSION.SDK_INT>=18){
+				for(int j = MediaCodecList.getCodecCount() - 1; j >= 0; j--){
+					MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(j);
+		
+					String[] types = codecInfo.getSupportedTypes();
+					for (int i = 0; i < types.length; i++) {
+						if (types[i].equalsIgnoreCase("video/avc")) {
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
+	    
+	    public void putYUVData(byte[] buffer, int length, byte[] tag) {
+			if (YUVQueue.size() >= 10) {
+				YUVQueue.poll();
+			}
+			YUVQueue.add(new avcDataInfo(buffer, tag));
+		}
 }
