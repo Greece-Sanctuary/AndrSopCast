@@ -135,7 +135,8 @@ public class X264Encoder {
 	}
 	
 	public void writeVideoFLV(byte[] in, int size, byte[] tag, int withHeader) {
-
+		int a = bytesToInt(tag, 1);
+		Log.i("postAVCFromNative1", "tag:"+a);
 		native_writeFLV(in, size, tag, 0);
 	}
 	

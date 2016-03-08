@@ -44,9 +44,9 @@ public class AvcEncoder
 	
 	    MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height);
 	    mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
-	    mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 300*1000);
+	    mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate);
 	    mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
-	    mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 30);
+	    mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
 	    try {
 			mediaCodec = MediaCodec.createEncoderByType("video/avc");
 		} catch (Exception e) {
@@ -113,22 +113,18 @@ public class AvcEncoder
 			@Override
 			public void run() {
 				isRuning = true;
-				byte[] input = null;
-				byte[] tag = null;
+				avcDataInfo mInfo = null;
+				
 				long pts =  0;
 				long generateIndex = 0;
 
 				while (isRuning) {
 					if (AvCapture.YUVQueue.size() >0){
-						avcDataInfo info = AvCapture.YUVQueue.poll();
-						input = info.mData;
-						tag = info.mTag;
-//						byte[] yuv420sp = new byte[m_width*m_height*3/2];
-//						NV21ToNV12(input,yuv420sp,m_width,m_height);
-//						input = yuv420sp;
+						mInfo = AvCapture.YUVQueue.poll();
 					}
-					if (input != null) {
+					if (mInfo!=null && mInfo.mData != null) {
 						try {
+//							Log.d("Test", "index:"+mInfo.mIndex+",data:"+mInfo.mData);
 							long startMs = System.currentTimeMillis();
 							ByteBuffer[] inputBuffers = mediaCodec.getInputBuffers();
 							ByteBuffer[] outputBuffers = mediaCodec.getOutputBuffers();
@@ -137,8 +133,8 @@ public class AvcEncoder
 								pts = computePresentationTime(generateIndex);
 								ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
 								inputBuffer.clear();
-								inputBuffer.put(input);
-								mediaCodec.queueInputBuffer(inputBufferIndex, 0, input.length, pts, 0);
+								inputBuffer.put(mInfo.mData);
+								mediaCodec.queueInputBuffer(inputBufferIndex, 0, mInfo.mData.length, pts, 0);
 								generateIndex += 1;
 							}
 							
@@ -158,13 +154,13 @@ public class AvcEncoder
 									System.arraycopy(outData, 0, keyframe, configbyte.length, outData.length);
 									
 //									outputStream.write(keyframe, 0, keyframe.length);
-									tag[0] = 0x01;
+									mInfo.mTag[0] = 0x01;
 									if (keyframe.length>0)
-										x264Encoder.writeVideoFLV(keyframe, keyframe.length, tag, false ? 0 : 1);
+										x264Encoder.writeVideoFLV(keyframe, keyframe.length, mInfo.mTag, false ? 0 : 1);
 								}else{
-									tag[0] = 0x02;
+									mInfo.mTag[0] = 0x02;
 									if (outData.length>0)
-										x264Encoder.writeVideoFLV(outData, outData.length, tag, false ? 0 : 1);
+										x264Encoder.writeVideoFLV(outData, outData.length, mInfo.mTag, false ? 0 : 1);
 //									outputStream.write(outData, 0, outData.length);
 								}
 
@@ -175,6 +171,7 @@ public class AvcEncoder
 						} catch (Throwable t) {
 							t.printStackTrace();
 						}
+						mInfo = null;
 					} else {
 						try {
 							Thread.sleep(500);
@@ -187,24 +184,6 @@ public class AvcEncoder
 		});
 		EncoderThread.start();
 		
-	}
-	
-	private void NV21ToNV12(byte[] nv21,byte[] nv12,int width,int height){
-		if(nv21 == null || nv12 == null)return;
-		int framesize = width*height;
-		int i = 0,j = 0;
-		System.arraycopy(nv21, 0, nv12, 0, framesize);
-		for(i = 0; i < framesize; i++){
-			nv12[i] = nv21[i];
-		}
-		for (j = 0; j < framesize/2; j+=2)
-		{
-		  nv12[framesize + j-1] = nv21[j+framesize];
-		}
-		for (j = 0; j < framesize/2; j+=2)
-		{
-		  nv12[framesize + j] = nv21[j+framesize-1];
-		}
 	}
 	
     /**
