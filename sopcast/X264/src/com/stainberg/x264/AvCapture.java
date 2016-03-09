@@ -180,11 +180,11 @@ public class AvCapture extends Activity {
 	            x264Encoder = new X264Encoder(SupportAvcCodec());
 	            x264Encoder.setFps(FPS);
 	            x264Encoder.setBitrate(BITRATE);
-	            x264Encoder.setResolution(1280, 720, 9, 16);
+	            x264Encoder.setResolution(1280/2, 720/2, 9, 16);
 	            x264Encoder.init();
 	            x264Encoder.setCallback(m_callback);
 		        
-		        avcCodec = new AvcEncoder(720,1280,15,800*1000);
+		        avcCodec = new AvcEncoder(720/2,1280/2,15,800*1000);
 		        avcCodec.setx264Encoder(x264Encoder);
 				avcCodec.StartEncoderThread();
 	            
