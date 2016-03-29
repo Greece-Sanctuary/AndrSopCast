@@ -105,7 +105,9 @@ com_youku_x264_X264Encoder_init(JNIEnv* env, jobject thiz) {
 	flvPacketHandler->setVideoResolution(width, height);
 	listener->notify(pthread_self(), 10, NULL, 0, NULL);
 
-
+	float uKernel[KERNEL_SIZE] = {-1f, -1f, -1f,
+	                                      -1f, 8f, -1f,
+	                                      -1f, -1f, -1f };
 }
 
 static void
@@ -527,6 +529,7 @@ com_youku_x264_X264Encoder_writeFLV(JNIEnv* env, jobject thiz, jbyteArray in, ji
 	}
 	env->ReleaseByteArrayElements(in, (jbyte*)_in, JNI_ABORT);
 	env->ReleaseByteArrayElements(tag, (jbyte*)_tag, JNI_ABORT);
+	LOGI("packet_size:%d",packet_size);
 	jbyteArray jarray = env->NewByteArray(packet_size);
 	if(head_size > 0)
 	{
