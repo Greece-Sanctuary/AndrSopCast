@@ -48,7 +48,6 @@ static uint8_t* remindAudioBuffer;
 static int remindAudioLen;
 static JavaVM* jVM = NULL;
 static volatile int run = 0;
-static int _streamId = 0;
 static uint8_t* srcy;
 static uint8_t* srcu;
 static uint8_t* srcv;
@@ -464,7 +463,7 @@ com_youku_x264_X264Encoder_AudioCompress(JNIEnv* env, jobject thiz, jbyteArray i
 }
 
 static void
-com_youku_x264_X264Encoder_writeFLV(JNIEnv* env, jobject thiz, jbyteArray in, jint insize, jbyteArray tag, int withHeader)
+com_youku_x264_X264Encoder_writeFLV(JNIEnv* env, jobject thiz, jbyteArray in, jint insize, jbyteArray tag, int withHeader, int streamId)
 {
 	pthread_mutex_lock(&mutex);
 	size_t head_size = sizeof(proto_header) + sizeof(u2r_streaming);
@@ -512,7 +511,7 @@ com_youku_x264_X264Encoder_writeFLV(JNIEnv* env, jobject thiz, jbyteArray in, ji
 
 			u2r_streaming req;
 			memset(&req, 0, sizeof(req));
-			req.streamid		= htonl(_streamId);
+			req.streamid		= htonl(streamId);
 			req.payload_type	= PAYLOAD_TYPE_FLV;
 			req.payload_size	= htonl(packetSize);
 			memcpy(header, &hdr, sizeof(hdr));
@@ -583,7 +582,6 @@ com_youku_x264_X264Encoder_checkKey(JNIEnv* env, jobject thiz, jbyteArray in, ji
 	rsp.streamid = NTOHL(rsp.streamid);
 	if(streamId == rsp.streamid && rsp.result == 0 && CMD_U2R_RSP_STATE == header.cmd)
 	{
-		_streamId = streamId;
 		return 1;
 	}
 	else
@@ -612,7 +610,6 @@ com_youku_x264_X264Encoder_stop(JNIEnv* env, jobject thiz)
 	run = 0;
 	oldtimestemp = 0;
 	timestemp = 0;
-	_streamId = 0;
 	remindAudioLen = 0;
 	audioInit = 0;
 	diff = 0;
@@ -639,7 +636,7 @@ static JNINativeMethod mMethods[] = {//method for JAVA. use this to register nat
 		{"native_audioInit", "()V", (void*) com_youku_x264_X264Encoder_AudioInit},
 		{"native_audioSet", "(III)V", (void*)com_youku_x264_X264Encoder_AudioSet},//Channels, PCMBitSize, SampleRate
 		{"native_audioCompress", "([BI)V", (void*)com_youku_x264_X264Encoder_AudioCompress},
-		{"native_writeFLV", "([BI[BI)V", (void*)com_youku_x264_X264Encoder_writeFLV},
+		{"native_writeFLV", "([BI[BII)V", (void*)com_youku_x264_X264Encoder_writeFLV},
 		{"native_handshake", "(IILjava/lang/String;)[B", (void*)com_youku_x264_X264Encoder_handShake},
 		{"native_checkKey", "([BII)I", (void*)com_youku_x264_X264Encoder_checkKey},
 		{"native_stop", "()V", (void*)com_youku_x264_X264Encoder_stop},

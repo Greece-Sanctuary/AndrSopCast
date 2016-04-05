@@ -156,11 +156,11 @@ public class AvcEncoder
 //									outputStream.write(keyframe, 0, keyframe.length);
 									mInfo.mTag[0] = 0x01;
 									if (keyframe.length>0)
-										x264Encoder.writeVideoFLV(keyframe, keyframe.length, mInfo.mTag, false ? 0 : 1);
+										x264Encoder.writeVideoFLV(keyframe, keyframe.length, mInfo.mTag, false ? 0 : 1, 123);
 								}else{
 									mInfo.mTag[0] = 0x02;
 									if (outData.length>0)
-										x264Encoder.writeVideoFLV(outData, outData.length, mInfo.mTag, false ? 0 : 1);
+										x264Encoder.writeVideoFLV(outData, outData.length, mInfo.mTag, false ? 0 : 1, 123);
 //									outputStream.write(outData, 0, outData.length);
 								}
 

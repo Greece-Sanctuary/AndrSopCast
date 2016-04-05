@@ -28,7 +28,7 @@ public class X264Encoder {
 	private native void native_audioInit();
 	private native void native_audioSet(int channels, int pCMBitSize, int sampleRate);
 	private native void native_audioCompress(byte[] in, int size);
-	private static native void native_writeFLV(byte[] in, int size, byte[] tag, int withHeader);
+	private static native void native_writeFLV(byte[] in, int size, byte[] tag, int withHeader, int streamId);
 	private native byte[] native_handshake(int streamId, int userID, String token);
 	private native int native_checkKey(byte[] in, int size, int streamId);
 	private native void native_stop();
@@ -134,15 +134,15 @@ public class X264Encoder {
 		return native_handshake(streamId, userID, token);
 	}
 	
-	public void writeVideoFLV(byte[] in, int size, byte[] tag, int withHeader) {
+	public void writeVideoFLV(byte[] in, int size, byte[] tag, int withHeader, int streamId) {
 		int a = bytesToInt(tag, 1);
 		Log.i("postAVCFromNative1", "tag:"+a);
-		native_writeFLV(in, size, tag, 0);
+		native_writeFLV(in, size, tag, 0, streamId);
 	}
 	
-	public void writeAudioFLV(byte[] in, int size, byte[] tag, int withHeader) {
+	public void writeAudioFLV(byte[] in, int size, byte[] tag, int withHeader, int streamId) {
 
-		native_writeFLV(in, size, tag, withHeader);
+		native_writeFLV(in, size, tag, withHeader, streamId);
 	}
 	
 	private static void postEventFromNative(Object weak_thiz, int msg, byte[] arg0, int arg1, byte[] tag) {
@@ -150,7 +150,7 @@ public class X264Encoder {
 //			Log.v("123", "msg = " + msg + ", arg1 = " + arg1 + ", arg0 length = " + arg0.length);
 			if(tag != null) {
 //				if(tag[0] == 0)
-					native_writeFLV(arg0, arg1, tag, 0);
+//					native_writeFLV(arg0, arg1, tag, 0);
 
 //				else if(tag[0] == 1 || tag[0] == 2)
 //					native_writeFLV(arg0, arg1, tag, 0);
